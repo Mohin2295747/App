@@ -329,7 +329,9 @@ object Parser {
             val playlistVideoList = mutableListOf<HanimeInfo>()
             val playlistName = it.selectFirst("div > div > h4")?.text()
             val playlistScroll = it.getElementById("playlist-scroll")
-            playlistScroll?.children()?.forEach { parent ->
+            playlistScroll
+                ?.select("div.related-watch-wrap:has(a.overlay):has(div.card-mobile-panel)")
+                ?.forEach { parent ->
                 val videoCode = parent.selectFirst("div > a")?.absUrl("href")?.toVideoCode()
                     .throwIfParseNull(Parser::hanimeVideoVer2.name, "videoCode")
                 val cardMobilePanel = parent.selectFirst("div[class^=card-mobile-panel]")
