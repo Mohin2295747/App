@@ -5,7 +5,7 @@ on:
     branches: [ "master" ]
     paths-ignore:
       - "**.md"
-  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,21 +21,22 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
+      - name: Grant execute permission
         run: chmod +x gradlew
 
       - name: Build unsigned APK
         run: |
           ./gradlew assembleRelease \
             -x signRelease \
-            -x bundleRelease
+            -x bundleRelease \
+            -PdisableFirebase=true
 
-      - name: Rename APK
+      - name: Archive APK
         run: |
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release-unsigned.apk artifacts/app-unsigned-${{ github.sha }}.apk
 
-      - name: Upload unsigned APK
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-unsigned
