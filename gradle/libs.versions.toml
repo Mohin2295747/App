@@ -63,7 +63,7 @@ circularRevealSwitch = "0.4.6"
 desugarJdkLibs = "2.1.2"
 asynclayoutinflater = "1.0.0"
 flexbox = "3.0.0"
-firebaseBom = "33.4.0"
+firebaseBom = "33.15.0"
 mlkitTranslate = "17.0.2"  # New ML Kit version
 
 [libraries]
