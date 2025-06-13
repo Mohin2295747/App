@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - "**.md"
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,15 +27,12 @@ jobs:
 
       - name: Build unsigned APK
         run: |
-          ./gradlew assembleRelease \
-            -x signRelease \
-            -x bundleRelease \
-            -PdisableFirebase=true
+          ./gradlew assembleRelease -PdisableFirebase=true
 
       - name: Archive APK
         run: |
           mkdir -p artifacts
-          cp app/build/outputs/apk/release/app-release-unsigned.apk artifacts/app-unsigned-${{ github.sha }}.apk
+          cp app/build/outputs/apk/release/Han1meViewer-*.apk artifacts/app-unsigned-${{ github.sha }}.apk
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
