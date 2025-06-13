@@ -64,7 +64,7 @@ dependencies {
 
     // ML Kit Translation (exposed to app module)
     api(libs.mlkit.translate)
-    implementation(libs.androidx.lifecycle.runtime.ktx)  // For lifecycleScope
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")  // For lifecycleScope
 
     // Testing
     testImplementation(libs.junit)
