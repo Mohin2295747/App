@@ -18,6 +18,7 @@ import com.lxj.xpopup.XPopup
 import com.lxj.xpopup.core.BasePopupView
 import com.lxj.xpopup.interfaces.SimpleCallback
 import com.yenaly.han1meviewer.COMMENT_TYPE
+import com.yenaly.han1meviewer.Preferences
 import com.yenaly.han1meviewer.Preferences.isAlreadyLogin
 import com.yenaly.han1meviewer.R
 import com.yenaly.han1meviewer.VIDEO_COMMENT_PREFIX
@@ -37,26 +38,24 @@ import com.yenaly.yenaly_libs.utils.unsafeLazy
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-/**
- * @project Hanime1
- * @author Yenaly Liew
- * @time 2022/06/18 018 21:09
- */
 class CommentFragment : YenalyFragment<FragmentCommentBinding>(), StateLayoutMixin {
 
     val viewModel by activityViewModels<CommentViewModel>()
 
     private val commentTypePrefix by arguments(COMMENT_TYPE, VIDEO_COMMENT_PREFIX)
     private val commentAdapter by unsafeLazy {
-        VideoCommentRvAdapter(this)
+        VideoCommentRvAdapter(this).apply {
+            setOnTranslateClickListener { comment, position ->
+                if (Preferences.translationEnabled) {
+                    translateComment(comment.content, position)
+                }
+            }
+        }
     }
     private val replyPopup by unsafeLazy {
         ReplyPopup(requireContext()).also { it.hint = getString(R.string.comment) }
     }
 
-    /**
-     * 是否已经预加载了预览评论
-     */
     private var isPreviewCommentPrefetched = false
 
     override fun getViewBinding(
@@ -84,14 +83,17 @@ class CommentFragment : YenalyFragment<FragmentCommentBinding>(), StateLayoutMix
                 commentAdapter.submitList(comments)
             }
         }
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.rvComment) { v, insets ->
             val navBar = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             v.updatePadding(bottom = navBar.bottom)
             WindowInsetsCompat.CONSUMED
         }
+
         binding.srlComment.setOnRefreshListener {
             viewModel.getComment(commentTypePrefix, viewModel.code)
         }
+
         binding.btnComment.isVisible = isAlreadyLogin
         replyPopup.setOnSendListener {
             viewModel.currentUserId?.let { id ->
@@ -101,6 +103,7 @@ class CommentFragment : YenalyFragment<FragmentCommentBinding>(), StateLayoutMix
                 )
             } ?: showShortToast(R.string.there_is_a_small_issue)
         }
+
         binding.btnComment.setOnClickListener {
             XPopup.Builder(context).autoOpenSoftInput(true)
                 .setPopupCallback(object : SimpleCallback() {
@@ -125,13 +128,11 @@ class CommentFragment : YenalyFragment<FragmentCommentBinding>(), StateLayoutMix
                             binding.srlComment.finishRefresh()
                             binding.state.showError(state.throwable)
                         }
-
                         is WebsiteState.Loading -> {
                             if (!isPreviewCommentPrefetched) {
                                 binding.srlComment.autoRefresh()
                             }
                         }
-
                         is WebsiteState.Success -> {
                             binding.srlComment.finishRefresh()
                             viewModel.currentUserId = state.info.currentUserId
@@ -164,14 +165,8 @@ class CommentFragment : YenalyFragment<FragmentCommentBinding>(), StateLayoutMix
         lifecycleScope.launch {
             viewModel.postCommentFlow.collect { state ->
                 when (state) {
-                    is WebsiteState.Error -> {
-                        showShortToast(R.string.send_failed)
-                    }
-
-                    is WebsiteState.Loading -> {
-                        showShortToast(R.string.sending_comment)
-                    }
-
+                    is WebsiteState.Error -> showShortToast(R.string.send_failed)
+                    is WebsiteState.Loading -> showShortToast(R.string.sending_comment)
                     is WebsiteState.Success -> {
                         showShortToast(R.string.send_success)
                         viewModel.getComment(commentTypePrefix, viewModel.code)
@@ -184,14 +179,8 @@ class CommentFragment : YenalyFragment<FragmentCommentBinding>(), StateLayoutMix
         lifecycleScope.launch {
             viewModel.postReplyFlow.collect { state ->
                 when (state) {
-                    is WebsiteState.Error -> {
-                        showShortToast(R.string.send_failed)
-                    }
-
-                    is WebsiteState.Loading -> {
-                        showShortToast(R.string.sending_reply)
-                    }
-
+                    is WebsiteState.Error -> showShortToast(R.string.send_failed)
+                    is WebsiteState.Loading -> showShortToast(R.string.sending_reply)
                     is WebsiteState.Success -> {
                         showShortToast(R.string.send_success)
                         viewModel.getComment(commentTypePrefix, viewModel.code)
@@ -206,16 +195,24 @@ class CommentFragment : YenalyFragment<FragmentCommentBinding>(), StateLayoutMix
                 when (state) {
                     is WebsiteState.Error -> showShortToast(state.throwable.message)
                     is WebsiteState.Loading -> Unit
-                    is WebsiteState.Success -> {
-                        viewModel.handleCommentLike(state.info)
-                    }
+                    is WebsiteState.Success -> viewModel.handleCommentLike(state.info)
                 }
             }
         }
     }
 
+    private fun translateComment(commentText: String, position: Int) {
+        lifecycleScope.launch {
+            try {
+                val translatedText = TranslationUtil.translateText(commentText)
+                commentAdapter.updateCommentTranslation(position, translatedText)
+            } catch (e: Exception) {
+                showShortToast(R.string.translation_failed)
+            }
+        }
+    }
+
     private fun showRedDotCount(count: Int) {
-        val parent = context as? VideoActivity
-        parent?.showRedDotCount(count)
+        (context as? VideoActivity)?.showRedDotCount(count)
     }
 }

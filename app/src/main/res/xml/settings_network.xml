@@ -17,4 +17,21 @@
         app:summary="@string/use_built_in_hosts_summary"
         app:title="@string/use_built_in_hosts" />
 
+    <!-- Translation Preferences -->
+    <com.yenaly.yenaly_libs.base.preference.MaterialSwitchPreference
+        app:iconSpaceReserved="false"
+        app:key="translation_enabled"
+        app:title="@string/enable_translation"
+        app:summary="@string/enable_translation_summary"
+        app:defaultValue="false" />
+
+    <com.yenaly.yenaly_libs.base.preference.MaterialListPreference
+        app:iconSpaceReserved="false"
+        app:key="target_language"
+        app:title="@string/target_language"
+        app:entries="@array/language_entries"
+        app:entryValues="@array/language_values"
+        app:defaultValue="en"
+        app:dependency="translation_enabled" />
+
 </PreferenceScreen>

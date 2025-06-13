@@ -32,11 +32,6 @@ import com.yenaly.yenaly_libs.base.settings.YenalySettingsFragment
 import com.yenaly.yenaly_libs.utils.showShortToast
 import com.yenaly.yenaly_libs.utils.unsafeLazy
 
-/**
- * @project Han1meViewer
- * @author Yenaly Liew
- * @time 2024/03/10 010 18:30
- */
 class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
     IToolbarFragment<SettingsActivity> {
 
@@ -47,14 +42,15 @@ class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
         const val PROXY_PORT = "proxy_port"
         const val DOMAIN_NAME = "domain_name"
         const val USE_BUILT_IN_HOSTS = "use_built_in_hosts"
+        const val TRANSLATION_ENABLED = "translation_enabled"
+        const val TARGET_LANGUAGE = "target_language"
     }
 
-    private val proxy
-            by safePreference<Preference>(PROXY)
-    private val domainName
-            by safePreference<MaterialDialogPreference>(DOMAIN_NAME)
-    private val useBuiltInHosts
-            by safePreference<MaterialSwitchPreference>(USE_BUILT_IN_HOSTS)
+    private val proxy by safePreference<Preference>(PROXY)
+    private val domainName by safePreference<MaterialDialogPreference>(DOMAIN_NAME)
+    private val useBuiltInHosts by safePreference<MaterialSwitchPreference>(USE_BUILT_IN_HOSTS)
+    private val translationEnabled by safePreference<MaterialSwitchPreference>(TRANSLATION_ENABLED)
+    private val targetLanguage by safePreference<Preference>(TARGET_LANGUAGE)
 
     private val proxyDialog by unsafeLazy {
         ProxyDialog(proxy, R.layout.dialog_proxy)
@@ -66,6 +62,13 @@ class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
     }
 
     override fun onPreferencesCreated(savedInstanceState: Bundle?) {
+        setupProxyPreferences()
+        setupDomainNamePreferences()
+        setupBuiltInHostsPreferences()
+        setupTranslationPreferences()
+    }
+
+    private fun setupProxyPreferences() {
         proxy.apply {
             summary = generateProxySummary(
                 Preferences.proxyType,
@@ -74,9 +77,12 @@ class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
             )
             setOnPreferenceClickListener {
                 proxyDialog.show()
-                return@setOnPreferenceClickListener true
+                true
             }
         }
+    }
+
+    private fun setupDomainNamePreferences() {
         domainName.apply {
             entries = arrayOf(
                 "$HANIME_MAIN_HOSTNAME (${getString(R.string.default_)})",
@@ -101,22 +107,73 @@ class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
                         }
                     }
                 }
-                return@setOnPreferenceChangeListener true
+                true
             }
         }
-        useBuiltInHosts.apply {
-            setOnPreferenceChangeListener { _, _ ->
-                requireContext().showAlertDialog {
-                    setCancelable(false)
-                    setTitle(R.string.attention)
-                    setMessage(getString(R.string.restart_or_not_working, EMPTY_STRING))
-                    setPositiveButton(R.string.confirm) { _, _ ->
-                        ActivityManager.restart(killProcess = true)
-                    }
-                    setNegativeButton(R.string.cancel, null)
+    }
+
+    private fun setupBuiltInHostsPreferences() {
+        useBuiltInHosts.setOnPreferenceChangeListener { _, _ ->
+            requireContext().showAlertDialog {
+                setCancelable(false)
+                setTitle(R.string.attention)
+                setMessage(getString(R.string.restart_or_not_working, EMPTY_STRING))
+                setPositiveButton(R.string.confirm) { _, _ ->
+                    ActivityManager.restart(killProcess = true)
                 }
-                return@setOnPreferenceChangeListener true
+                setNegativeButton(R.string.cancel, null)
             }
+            true
+        }
+    }
+
+    private fun setupTranslationPreferences() {
+        translationEnabled.setOnPreferenceChangeListener { _, newValue ->
+            Preferences.translationEnabled = newValue as Boolean
+            true
+        }
+
+        targetLanguage.apply {
+            summary = getLanguageSummary(Preferences.targetLanguage)
+            setOnPreferenceClickListener {
+                showLanguageSelectionDialog()
+                true
+            }
+        }
+    }
+
+    private fun getLanguageSummary(languageCode: String): String {
+        return when (languageCode) {
+            "en" -> getString(R.string.language_english)
+            "ja" -> getString(R.string.language_japanese)
+            "ko" -> getString(R.string.language_korean)
+            else -> getString(R.string.language_english)
+        }
+    }
+
+    private fun showLanguageSelectionDialog() {
+        val languages = resources.getStringArray(R.array.language_entries)
+        val currentIndex = when (Preferences.targetLanguage) {
+            "en" -> 0
+            "ja" -> 1
+            "ko" -> 2
+            else -> 0
+        }
+
+        requireContext().showAlertDialog {
+            setTitle(R.string.target_language)
+            setSingleChoiceItems(languages, currentIndex) { dialog, which ->
+                val newLanguage = when (which) {
+                    0 -> "en"
+                    1 -> "ja"
+                    2 -> "ko"
+                    else -> "en"
+                }
+                Preferences.targetLanguage = newLanguage
+                targetLanguage.summary = getLanguageSummary(newLanguage)
+                dialog.dismiss()
+            }
+            setNegativeButton(R.string.cancel, null)
         }
     }
 
@@ -131,9 +188,7 @@ class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
     }
 
     inner class ProxyDialog(proxyPref: Preference, @LayoutRes layoutRes: Int) {
-
         private val dialog: AlertDialog
-
         private val cgTypes: ChipGroup
         private val etIp: TextInputEditText
         private val etPort: TextInputEditText
@@ -148,22 +203,20 @@ class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
                 setView(view)
                 setCancelable(false)
                 setTitle(R.string.proxy)
-                setPositiveButton(R.string.confirm, null) // Set to null. We override the onclick.
+                setPositiveButton(R.string.confirm, null)
                 setNegativeButton(R.string.cancel, null)
             }
             dialog.setOnShowListener {
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                     val ip = etIp.text?.toString().orEmpty()
                     val port = etPort.text?.toString()?.toIntOrNull() ?: -1
-                    val isValid = checkValid(ip, port)
-                    if (isValid) {
+                    if (checkValid(ip, port)) {
                         val proxyType = proxyType
                         Preferences.preferenceSp.edit(commit = true) {
                             putInt(PROXY_TYPE, proxyType)
                             putString(PROXY_IP, ip)
                             putInt(PROXY_PORT, port)
                         }
-                        // 重建相关联的所有网络请求
                         HProxySelector.rebuildNetwork()
                         HanimeNetwork.rebuildNetwork()
                         proxyPref.summary = generateProxySummary(proxyType, ip, port)
@@ -210,33 +263,19 @@ class NetworkSettingsFragment : YenalySettingsFragment(R.xml.settings_network),
                 HProxySelector.TYPE_HTTP, HProxySelector.TYPE_SOCKS -> {
                     HProxySelector.validateIp(ip) && HProxySelector.validatePort(port)
                 }
-
                 else -> false
             }
         }
 
         private fun enableView(@IdRes checkedId: Int) {
             when (checkedId) {
-                R.id.chip_direct -> {
+                R.id.chip_direct, R.id.chip_system_proxy -> {
                     etIp.isEnabled = false
                     etPort.isEnabled = false
                     etIp.text = null
                     etPort.text = null
                 }
-
-                R.id.chip_system_proxy -> {
-                    etIp.isEnabled = false
-                    etPort.isEnabled = false
-                    etIp.text = null
-                    etPort.text = null
-                }
-
-                R.id.chip_http -> {
-                    etIp.isEnabled = true
-                    etPort.isEnabled = true
-                }
-
-                R.id.chip_socks -> {
+                R.id.chip_http, R.id.chip_socks -> {
                     etIp.isEnabled = true
                     etPort.isEnabled = true
                 }

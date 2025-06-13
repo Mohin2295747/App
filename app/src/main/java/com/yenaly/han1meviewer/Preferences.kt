@@ -27,6 +27,18 @@ object Preferences {
             applicationContext
         )
 
+    // Translation Preferences
+    const val TRANSLATION_ENABLED = "translation_enabled"
+    const val TARGET_LANGUAGE = "target_language"
+    
+    var translationEnabled: Boolean
+        get() = getSpValue(TRANSLATION_ENABLED, false)
+        set(value) = putSpValue(TRANSLATION_ENABLED, value)
+        
+    var targetLanguage: String
+        get() = getSpValue(TARGET_LANGUAGE, "en")
+        set(value) = putSpValue(TARGET_LANGUAGE, value)
+
     // app 相關
 
     /**
@@ -172,5 +184,4 @@ object Preferences {
 
     val isAnalyticsEnabled: Boolean
         get() = preferenceSp.getBoolean(HomeSettingsFragment.USE_ANALYTICS, true)
-
 }

@@ -44,13 +44,14 @@ android {
 }
 
 dependencies {
-
+    // AndroidX dependencies
     implementation(libs.recyclerview)
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.coroutines.android)
 
+    // Navigation and Lifecycle
     implementation(libs.navigation.fragment.ktx)
     implementation(libs.lifecycle.livedata.ktx)
     implementation(libs.lifecycle.viewmodel.ktx)
@@ -58,10 +59,15 @@ dependencies {
     implementation(libs.startup.runtime)
     implementation(libs.gson)
 
+    // UI components
     implementation(libs.spannable.x)
 
-    testImplementation(libs.junit)
+    // ML Kit Translation (exposed to app module)
+    api(libs.mlkit.translate)
+    implementation(libs.androidx.lifecycle.runtime.ktx)  // For lifecycleScope
 
+    // Testing
+    testImplementation(libs.junit)
     androidTestImplementation(libs.test.junit)
     androidTestImplementation(libs.test.espresso.core)
 }

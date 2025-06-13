@@ -161,6 +161,10 @@ dependencies {
     implementation(libs.firebase.perf)
     implementation(libs.firebase.config)
 
+    // ML Kit Translation
+    implementation(libs.mlkit.translate)
+    implementation(libs.androidx.lifecycle.runtime.ktx)  // For lifecycleScope
+
     ksp(libs.room.compiler)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
